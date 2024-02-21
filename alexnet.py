@@ -32,7 +32,7 @@ def fcLayer(x, inputD, outputD, reluFlag, name):
 
 def convLayer(x, kHeight, kWidth, strideX, strideY,
               featureNum, name, padding = "SAME", groups = 1):
-    """convolution"""
+
     channel = int(x.get_shape()[-1])
     conv = lambda a, b: tf.nn.conv2d(a, b, strides = [1, strideY, strideX, 1], padding = padding)
     with tf.variable_scope(name) as scope:
@@ -44,7 +44,6 @@ def convLayer(x, kHeight, kWidth, strideX, strideY,
 
         featureMap = [conv(t1, t2) for t1, t2 in zip(xNew, wNew)]
         mergeFeatureMap = tf.concat(axis = 3, values = featureMap)
-        # print mergeFeatureMap.shape
         out = tf.nn.bias_add(mergeFeatureMap, b)
         return tf.nn.relu(tf.reshape(out, mergeFeatureMap.get_shape().as_list()), name = scope.name)
 
