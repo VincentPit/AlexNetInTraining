@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from alexnet import AlexNet 
-
+from tqdm import tqdm 
 learning_rate = 0.001
 num_epochs = 10
 batch_size = 32
@@ -44,13 +44,16 @@ optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
 
 for epoch in range(num_epochs):
-    for i in range(0, len(train_data), batch_size):
-        batch_x = train_data[i:i + batch_size]
-        batch_y = train_labels[i:i + batch_size]
-        outputs = model(batch_x)
-        loss = criterion(outputs, batch_y)
-        optimizer.zero_grad()
+    with tqdm(total=len(train_data), desc=f'Epoch {epoch + 1}/{num_epochs}', unit='samples') as pbar:
+        for i in range(0, len(train_data), batch_size):
+            batch_x = train_data[i:i + batch_size]
+            batch_y = train_labels[i:i + batch_size]
+            outputs = model(batch_x)
+            loss = criterion(outputs, batch_y)
+            optimizer.zero_grad()
 
-        loss.backward()
-        optimizer.step()
-    print('Epoch %i: Loss: %f' % (epoch + 1, loss.item()))
+            loss.backward()
+            optimizer.step()
+            pbar.update(len(batch_x))
+            pbar.set_postfix({'Loss': loss.item()})
+        print('Epoch %i: Loss: %f' % (epoch + 1, loss.item()))
