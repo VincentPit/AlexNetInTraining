@@ -1,28 +1,56 @@
-import tensorflow as tf
+import os
 import numpy as np
-from alexnet import alexNet 
-# Assume you have already defined the AlexNet class and its methods
+import torch
+import torch.nn as nn
+from alexnet import AlexNet 
 
-# Define your train_data and train_labels here
-train_data = ...
-train_labels = ...
-
-# Hyperparameters
 learning_rate = 0.001
 num_epochs = 10
-batch_size = 64
+batch_size = 32
 
-# Create a TensorFlow session
-with tf.Session() as sess:
-    # Create an instance of AlexNet
-    x_shape = train_data.shape[1:]  # Shape of input data
-    num_classes = 10  # Number of classes
-    x = tf.placeholder(tf.float32, shape=[None, *x_shape], name='X')
-    keep_prob = tf.placeholder(tf.float32, name='keep_prob')
-    model = alexNet(x, keep_prob, num_classes)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Train the model
-    model.train(sess, train_data, train_labels, num_epochs, batch_size, learning_rate)
+def load_data(data_dir):
+    data = []
+    labels = []
+    for label, folder in enumerate(os.listdir(data_dir)):
+        folder_path = os.path.join(data_dir, folder)
+        if os.path.isdir(folder_path):
+            for file in os.listdir(folder_path):
+                if file.endswith('.npy'):
+                    file_path = os.path.join(folder_path, file)
+                    image = np.load(file_path)
+                    data.append(image)
+                    labels.append(label)
+    return np.array(data), np.array(labels)
 
-    # Save the trained model
-    model.save_model(sess, "trained_model.ckpt")
+train_data_dir = 'greyScaleMini/train'
+train_data, train_labels = load_data(train_data_dir)
+
+indices = np.arange(len(train_data))
+np.random.shuffle(indices)
+train_data = train_data[indices]
+train_labels = train_labels[indices]
+
+train_data = torch.tensor(train_data, dtype=torch.float32).to(device)
+train_labels = torch.tensor(train_labels, dtype=torch.long).to(device)
+train_data = torch.unsqueeze(train_data, dim=1)
+train_data = torch.squeeze(train_data, dim=-1)
+
+model = AlexNet(num_classes=1000).to(device)
+
+criterion = nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+
+
+for epoch in range(num_epochs):
+    for i in range(0, len(train_data), batch_size):
+        batch_x = train_data[i:i + batch_size]
+        batch_y = train_labels[i:i + batch_size]
+        outputs = model(batch_x)
+        loss = criterion(outputs, batch_y)
+        optimizer.zero_grad()
+
+        loss.backward()
+        optimizer.step()
+    print('Epoch %i: Loss: %f' % (epoch + 1, loss.item()))
