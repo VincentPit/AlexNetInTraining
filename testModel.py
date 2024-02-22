@@ -1,58 +1,38 @@
-
-import os
-import urllib.request
-import argparse
-import sys
-import alexnet
-import cv2
-import tensorflow as tf
+from TrainModel import load_data 
+from alexnet import AlexNet
 import numpy as np
-import caffe_classes
+import torch
+import torch.nn as nn
 
-parser = argparse.ArgumentParser(description='Classify some images.')
-parser.add_argument('-m', '--mode', choices=['folder', 'url'], default='folder')
-parser.add_argument('-p', '--path', help='Specify a path [e.g. testModel]', default = 'testModel')
-args = parser.parse_args(sys.argv[1:])
+model = AlexNet(num_classes=1000)  
+model.load_state_dict(torch.load('path_to_your_trained_model.pth')) 
+model.eval() 
 
-if args.mode == 'folder':
-    #get testImage
-    withPath = lambda f: '{}/{}'.format(args.path,f)
-    testImg = dict((f,cv2.imread(withPath(f))) for f in os.listdir(args.path) if os.path.isfile(withPath(f)))
-elif args.mode == 'url':
-    def url2img(url):
-        '''url to image'''
-        resp = urllib.request.urlopen(url)
-        image = np.asarray(bytearray(resp.read()), dtype="uint8")
-        image = cv2.imdecode(image, cv2.IMREAD_COLOR)
-        return image
-    testImg = {args.path:url2img(args.path)}
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# noinspection PyUnboundLocalVariable
-if testImg.values():
-    #some params
-    dropoutPro = 1
-    classNum = 1000
-    skip = []
 
-    imgMean = np.array([104, 117, 124], np.float)
-    x = tf.placeholder("float", [1, 227, 227, 3])
+train_data_dir = 'greyScaleMini/train'
+train_data, train_labels = load_data(train_data_dir)
+def calculate_accuracy(model, data, labels):
+    model.eval()
+    data = torch.tensor(data, dtype=torch.float32).to(device)
+    labels = torch.tensor(labels, dtype=torch.long).to(device)
+    data = torch.unsqueeze(data, dim=1)
+    data = torch.squeeze(data, dim=-1)
+    
+    with torch.no_grad():
+        outputs = model(data)
+        _, predicted = torch.max(outputs, 1)
+        correct = (predicted == labels).sum().item()
+        accuracy = correct / len(labels)
+    return accuracy
 
-    model = alexnet.alexNet(x, dropoutPro, classNum, skip)
-    score = model.fc3
-    softmax = tf.nn.softmax(score)
+train_accuracy = calculate_accuracy(model, train_data, train_labels)
+print(f'Trian Accuracy: {train_accuracy}')
 
-    with tf.Session() as sess:
-        sess.run(tf.global_variables_initializer())
-        model.loadModel(sess)
 
-        for key,img in testImg.items():
-            #img preprocess
-            resized = cv2.resize(img.astype(np.float), (227, 227)) - imgMean
-            maxx = np.argmax(sess.run(softmax, feed_dict = {x: resized.reshape((1, 227, 227, 3))}))
-            res = caffe_classes.class_names[maxx]
+val_data_dir = 'greyScaleMini/val'
+val_data, val_labels = load_data(val_data_dir)
 
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            cv2.putText(img, res, (int(img.shape[0]/3), int(img.shape[1]/3)), font, 1, (0, 255, 0), 2)
-            print("{}: {}\n----".format(key,res))
-            cv2.imshow("demo", img)
-            cv2.waitKey(0)
+val_accuracy = calculate_accuracy(model, val_data, val_labels)
+print(f'Validate Accuracy: {val_accuracy}')

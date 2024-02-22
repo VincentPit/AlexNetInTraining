@@ -57,3 +57,5 @@ for epoch in range(num_epochs):
             pbar.update(len(batch_x))
             pbar.set_postfix({'Loss': loss.item()})
         print('Epoch %i: Loss: %f' % (epoch + 1, loss.item()))
+
+torch.save(model.state_dict(), 'trained_model.pth')

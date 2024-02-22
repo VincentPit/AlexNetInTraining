@@ -5,13 +5,9 @@ import cv2
 import numpy as np
 
 def preprocess_image(image_path, target_size=(256, 256)):
-    # Read the image from the file path
     image = cv2.imread(image_path)
-    #Resize the image to the target size
     image = cv2.resize(image, target_size)
-    #Convert the image to grayscale
     gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    #Normalize pixel values to range [0, 1]
     gray_image = gray_image.astype(np.float32) / 255.0
     gray_image = np.expand_dims(gray_image, axis=-1)
     return gray_image
