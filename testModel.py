@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 
 model = AlexNet(num_classes=1000)  
-model.load_state_dict(torch.load('path_to_your_trained_model.pth')) 
+model.load_state_dict(torch.load('trained_model.pth')) 
 model.eval() 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
